@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publish each package not already live. Invoked by release-publish-crate/
 # action.yml with CARGO_REGISTRY_TOKEN plus PACKAGES/PUBLISH/ARGS in the env.
-set -eu
+set -euo pipefail
 set -f
 # shellcheck disable=SC2086 # deliberate word-splitting of the packages list
 for c in ${PACKAGES}; do

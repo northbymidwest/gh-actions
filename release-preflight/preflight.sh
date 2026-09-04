@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Release preflight checks. Invoked by release-preflight/action.yml with its
 # inputs in the environment; writes tag/publish/registry to ${GITHUB_OUTPUT}.
-set -eu
+set -euo pipefail
 # No globbing: the lists below are iterated by whitespace splitting, and a crate
 # name or path must never be expanded as a glob.
 set -f

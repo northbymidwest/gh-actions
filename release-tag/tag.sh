@@ -2,7 +2,7 @@
 # Push the protected v<version> tag with the deploy key and cut the GitHub
 # release. Invoked by release-tag/action.yml with VERSION/RELEASE_TAG_KEY/
 # GH_TOKEN/CHANGELOG/PRERELEASE/REPO in the env.
-set -eu
+set -euo pipefail
 sha=$(git rev-parse HEAD)
 dir=$(mktemp -d)
 trap 'rm -rf "${dir}"' EXIT

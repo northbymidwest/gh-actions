@@ -17,6 +17,8 @@
   fixed real masked-failure bugs: `check-ascii.sh` no longer passes silently
   when `git ls-files` fails, and the release scripts no longer swallow a failed
   `gh ... | jq` mid-pipe.
+- `set -o pipefail` in the bash release scripts, so a failure anywhere in a
+  future pipe stops the run rather than being masked by the last stage.
 - `shfmt` formatting enforced in CI (`-i 2 -ci`).
 - An opt-in `.githooks/pre-commit` running the ASCII rule, shellcheck, and
   shfmt on staged shell scripts.

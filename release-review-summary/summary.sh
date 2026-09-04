@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Write the approver's review table to ${GITHUB_STEP_SUMMARY}. Invoked by
 # release-review-summary/action.yml with its inputs in the env.
-set -eu
+set -euo pipefail
 sha=$(git rev-parse HEAD)
 subject=$(git log -1 --format=%s)
 # gh on its own line so its failure is caught by set -e, not masked by the jq
