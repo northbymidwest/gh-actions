@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '41 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  lint:
+    # actionlint on the workflows, shellcheck on the script and on every
+    # composite action's run block (actionlint does not see those), zizmor
+    # over everything, and the ASCII rule.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: ./scripts/check-ascii.sh
+      - name: actionlint
+        env:
+          SHELLCHECK_OPTS: -e SC2016
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint"
+      - name: shellcheck the script and the actions' run blocks
+        run: |
+          shellcheck scripts/setup-release-tagging.sh
+          for a in release-preflight release-tag; do
+            { echo '#!/usr/bin/env bash'; yq -r '.runs.steps[].run' "$a/action.yml"; } > "/tmp/$a.sh"
+            shellcheck -e SC2016,SC2086 "/tmp/$a.sh"
+          done
+      - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+        with:
+          inputs: .
+          advanced-security: true
+      - name: zizmor (blocking)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pipx install zizmor==1.29.0
+          zizmor --no-progress .
+
+  smoke:
+    # release-preflight against this repository's own changelog, in dry-run
+    # mode: proves the action parses and runs end to end. release-tag cannot
+    # be rehearsed without creating a tag, so it is not run here.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: preflight
+        uses: ./release-preflight
+        with:
+          version: "0.1.0"
+          dry-run: "true"
+          crates: ""
+          token: ${{ github.token }}
+      - env:
+          TAG_STATE: ${{ steps.preflight.outputs.tag }}
+        run: echo "tag state is $TAG_STATE"
