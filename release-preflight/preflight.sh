@@ -6,6 +6,9 @@ set -euo pipefail
 # name or path must never be expanded as a glob.
 set -f
 
+# shellcheck source=release-preflight/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+
 fail() {
   echo "::error::$1"
   exit 1
@@ -31,11 +34,7 @@ live() {
   esac
 }
 
-case "${VERSION}" in
-  v*) fail "version must not start with v" ;;
-  [0-9]*.[0-9]*.[0-9]*) : ;;
-  *) fail "version must look like MAJOR.MINOR.PATCH" ;;
-esac
+is_valid_version "${VERSION}" || fail "version must be MAJOR.MINOR.PATCH with no leading v (got '${VERSION}')"
 
 # Every listed manifest must carry this version and must no longer be
 # publish = false. Read them rather than trust them. (awk stops at the first
@@ -95,51 +94,21 @@ fi
 # the already-live prefix is skipped and the run resumes at the first not-live
 # package. Any live package after a not-live one is a state no release can
 # produce, and stays fatal.
-publish_json="[]"
-registry=""
-if [ -n "${PACKAGES//[[:space:]]/}" ]; then
-  to_publish=""
-  any_live=false
-  all_live=true
-  prev_live=true
-  broke=false
-  # shellcheck disable=SC2086 # deliberate word-splitting of the packages list
-  for c in ${PACKAGES}; do
-    if live "${c}" "${VERSION}"; then
-      [ "${prev_live}" = true ] || broke=true
-      any_live=true
-    else
-      prev_live=false
-      all_live=false
-      to_publish="${to_publish} ${c}"
-    fi
-  done
-  # Build the JSON array by hand (crate names are [a-z0-9._-], no escaping) so
-  # there is no pipe whose upstream failure could be masked.
-  publish_json="["
-  sep=""
-  # shellcheck disable=SC2086 # deliberate word-splitting of the to-publish list
-  for c in ${to_publish}; do
-    publish_json="${publish_json}${sep}\"${c}\""
-    sep=","
-  done
-  publish_json="${publish_json}]"
-  if [ "${broke}" = true ]; then
-    soft "crates.io state for ${VERSION} is inconsistent (a published crate follows an unpublished one); no release produces this, check by hand"
-  fi
-  if [ "${all_live}" = true ]; then
-    soft "every package already has ${VERSION} published"
-    registry="all already published"
-  elif [ "${any_live}" = true ]; then
-    [ "${DRY}" = true ] || echo "::notice::resuming a half-finished release; uploading only:${to_publish}"
-    registry="RESUME: uploading only${to_publish}"
-  else
-    registry="not yet published; will publish:${to_publish}"
-  fi
+# compute_publish (lib.sh) does the pure computation; the soft/notice side
+# effects, which depend on DRY, stay here.
+# shellcheck disable=SC2086 # deliberate word-splitting of the packages list
+compute_publish "${VERSION}" ${PACKAGES}
+if [ "${RESUME_BROKE}" = true ]; then
+  soft "crates.io state for ${VERSION} is inconsistent (a published crate follows an unpublished one); no release produces this, check by hand"
+fi
+if [ "${RESUME_ALL_LIVE}" = true ]; then
+  soft "every package already has ${VERSION} published"
+elif [ "${RESUME_ANY_LIVE}" = true ]; then
+  [ "${DRY}" = true ] || echo "::notice::resuming a half-finished release; uploading only:${TO_PUBLISH}"
 fi
 {
-  echo "publish=${publish_json}"
-  echo "registry=${registry}"
+  echo "publish=${PUBLISH_JSON}"
+  echo "registry=${REGISTRY}"
 } >>"${GITHUB_OUTPUT}"
 
 # A changelog section for this version must exist and be non-empty.
@@ -158,4 +127,4 @@ concl=$(jq -r --arg w "${CI_WORKFLOW}" \
   <<<"${runs_json}")
 [ "${concl}" = "success" ] || soft "newest ${CI_WORKFLOW} run for ${sha} is '${concl}', not success"
 
-echo "::notice::preflight passed for ${VERSION} at ${sha} (${registry})"
+echo "::notice::preflight passed for ${VERSION} at ${sha} (${REGISTRY})"

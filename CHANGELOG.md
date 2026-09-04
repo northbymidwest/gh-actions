@@ -22,6 +22,10 @@
 - `shfmt` formatting enforced in CI (`-i 2 -ci`).
 - An opt-in `.githooks/pre-commit` running the ASCII rule, shellcheck, and
   shfmt on staged shell scripts.
+- `release-preflight/lib.sh` extracting the pure logic (version validation and
+  the resume / publish-prefix computation) with a dependency-free unit test
+  (`release-preflight/test.sh`, run in CI). Writing the tests caught a variable
+  rename bug in the refactor.
 
 ## 0.2.1 - 2026-09-04
 

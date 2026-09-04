@@ -59,9 +59,10 @@ jobs:
           zizmor --no-progress .
 
   smoke:
-    # release-preflight against this repository's own changelog, in dry-run
-    # mode: proves the action parses and runs end to end. release-tag cannot
-    # be rehearsed without creating a tag, so it is not run here.
+    # Unit tests for release-preflight's pure logic (lib.sh), then
+    # release-preflight itself against this repository's own changelog in
+    # dry-run mode: proves the action parses and runs end to end. release-tag
+    # cannot be rehearsed without creating a tag, so it is not run here.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -71,6 +72,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: unit tests (release-preflight/lib.sh)
+        run: bash release-preflight/test.sh
       - id: preflight
         uses: ./release-preflight
         with:
