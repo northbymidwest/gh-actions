@@ -34,7 +34,7 @@ inputs:
     required: true
 outputs:
   tag:
-    description: "free" when v<version> does not exist yet, otherwise "exists".
+    description: 'free when v<version> does not exist yet, otherwise exists.'
     value: ${{ steps.check.outputs.tag }}
 runs:
   using: composite
