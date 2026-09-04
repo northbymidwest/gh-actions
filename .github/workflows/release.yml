@@ -1,0 +1,66 @@
+name: release
+run-name: release ${{ inputs.version }}${{ inputs.dry_run && ' (dry run)' || '' }}
+
+# Tags a release of this repository through its own actions (dogfooding):
+# preflight, then the reviewer gate, then the protected v* tag and the GitHub
+# release. There is nothing to publish here; the tag is what consumers pin
+# their version comments to.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (e.g. 0.1.0)'
+        type: string
+        required: true
+      dry_run:
+        description: 'Stop before tagging'
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./release-preflight
+        with:
+          version: ${{ inputs.version }}
+          dry-run: ${{ inputs.dry_run }}
+          crates: ""
+          token: ${{ github.token }}
+
+  tag:
+    needs: preflight
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./release-tag
+        if: ${{ !inputs.dry_run }}
+        with:
+          version: ${{ inputs.version }}
+          deploy-key: ${{ secrets.RELEASE_TAG_KEY }}
+          token: ${{ github.token }}
+      - if: ${{ inputs.dry_run }}
+        env:
+          VERSION: ${{ inputs.version }}
+        run: echo "Dry run only. A real run would tag v$VERSION at this commit." >> "$GITHUB_STEP_SUMMARY"
