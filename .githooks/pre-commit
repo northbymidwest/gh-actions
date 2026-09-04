@@ -1,0 +1,45 @@
+#!/bin/sh
+# Pre-commit checks, opt-in per clone:
+#
+#     git config core.hooksPath .githooks
+#
+# The ASCII rule on every staged file, plus shellcheck and shfmt on staged
+# shell scripts when those tools are installed. `git commit --no-verify` skips
+# the hook; CI enforces the same checks regardless, so a missing tool here only
+# means the check waits for CI.
+set -eu
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -n "${staged}" ] || exit 0
+root=$(git rev-parse --show-toplevel)
+
+# Lists are newline-separated and split with IFS=newline throughout, so paths
+# with spaces survive; newline is IFS whitespace, so stray separators collapse.
+nl='
+'
+IFS="${nl}"
+# shellcheck disable=SC2086 # split the newline-separated staged list into args
+"${root}/scripts/check-ascii.sh" ${staged}
+
+sh_files=""
+for f in ${staged}; do
+  case "${f}" in
+    *.sh | .githooks/*) sh_files="${sh_files}${f}${nl}" ;;
+    *) ;;
+  esac
+done
+[ -n "${sh_files}" ] || exit 0
+
+if command -v shellcheck >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # word-split the collected file list
+  shellcheck ${sh_files}
+else
+  echo "pre-commit: shellcheck not found; skipping (CI enforces it)" >&2
+fi
+
+if command -v shfmt >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # word-split the collected file list
+  shfmt -d -i 2 -ci ${sh_files}
+else
+  echo "pre-commit: shfmt not found; skipping (CI enforces it)" >&2
+fi

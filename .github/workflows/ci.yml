@@ -37,10 +37,16 @@ jobs:
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           "$(go env GOPATH)/bin/actionlint"
       # Each composite's logic is a real .sh file (invoked via
-      # $GITHUB_ACTION_PATH), so shellcheck lints it directly - no extracting
-      # run: blocks out of YAML, and full file context with real line numbers.
+      # $GITHUB_ACTION_PATH), so shellcheck lints it directly - full file
+      # context, real line numbers, and the optional checks in .shellcheckrc.
       - name: shellcheck
-        run: shellcheck scripts/setup-release-tagging.sh release-*/*.sh
+        run: shellcheck scripts/*.sh release-*/*.sh .githooks/pre-commit
+      # shfmt is the formatter (rustfmt for shell): -d fails on any unformatted
+      # script, -i 2 -ci = two-space indent with indented case labels.
+      - name: shfmt
+        run: |
+          go install mvdan.cc/sh/v3/cmd/shfmt@v3.10.0
+          "$(go env GOPATH)/bin/shfmt" -d -i 2 -ci scripts/*.sh release-*/*.sh .githooks/pre-commit
       - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
           inputs: .

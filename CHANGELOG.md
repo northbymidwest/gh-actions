@@ -5,9 +5,21 @@
 ### Changed
 
 - Each composite's shell now lives in a real `.sh` file (invoked via
-  `$GITHUB_ACTION_PATH`) instead of an inline `run:` block, so shellcheck lints
-  it directly with full file context. No behaviour or interface change;
-  consumers on v0.2.1 need not re-pin.
+  `$GITHUB_ACTION_PATH`) instead of an inline `run:` block, so it is linted
+  directly with full file context. No behaviour or interface change; consumers
+  on v0.2.1 need not re-pin.
+
+### Added
+
+- `.shellcheckrc` enabling optional checks (require-variable-braces,
+  quote-safe-variables, add-default-case, deprecate-which,
+  check-extra-masked-returns), with all scripts brought into compliance. This
+  fixed real masked-failure bugs: `check-ascii.sh` no longer passes silently
+  when `git ls-files` fails, and the release scripts no longer swallow a failed
+  `gh ... | jq` mid-pipe.
+- `shfmt` formatting enforced in CI (`-i 2 -ci`).
+- An opt-in `.githooks/pre-commit` running the ASCII rule, shellcheck, and
+  shfmt on staged shell scripts.
 
 ## 0.2.1 - 2026-09-04
 

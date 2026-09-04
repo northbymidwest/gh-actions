@@ -1,0 +1,8 @@
+# Optional shellcheck checks (off by default) enabled repo-wide. CI, editors,
+# and the pre-commit hook all read this file, so the scripts are held to the
+# same bar everywhere.
+enable=require-variable-braces
+enable=quote-safe-variables
+enable=add-default-case
+enable=deprecate-which
+enable=check-extra-masked-returns

@@ -15,21 +15,26 @@
 # (tab, then space through tilde), not a POSIX class, so it is portable across
 # BSD grep, GNU grep, and drop-in replacements.
 set -eu
-cd "$(dirname "$0")/.."
+here=$(dirname "$0")
+cd "${here}/.."
 
 if [ "$#" -eq 0 ]; then
-    IFS='
+  # Capture the file list on its own line so a git failure stops the script
+  # rather than being masked into an empty (falsely passing) argument list.
+  files=$(git ls-files)
+  [ -n "${files}" ] || exit 0
+  IFS='
 '
-    set -- $(git ls-files)
-    [ "$#" -gt 0 ] || exit 0
+  # shellcheck disable=SC2086 # split the newline-separated list into arguments
+  set -- ${files}
 fi
 
 tab=$(printf '\t')
 found=$(LC_ALL=C grep -n -I "[^${tab} -~]" "$@" /dev/null || true)
 
-if [ -n "$found" ]; then
-    printf '%s\n' "$found" >&2
-    printf '\nNon-ASCII above. This repository is ASCII only; see the header of %s.\n' \
-        "scripts/check-ascii.sh" >&2
-    exit 1
+if [ -n "${found}" ]; then
+  printf '%s\n' "${found}" >&2
+  printf '\nNon-ASCII above. This repository is ASCII only; see the header of %s.\n' \
+    "scripts/check-ascii.sh" >&2
+  exit 1
 fi
