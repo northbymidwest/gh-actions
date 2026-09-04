@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.2 - 2026-09-04
+
+### Changed
+
+- Each composite's shell now lives in a real `.sh` file (invoked via
+  `$GITHUB_ACTION_PATH`) instead of an inline `run:` block, so shellcheck lints
+  it directly with full file context. No behaviour or interface change;
+  consumers on v0.2.1 need not re-pin.
+
 ## 0.2.1 - 2026-09-04
 
 ### Changed

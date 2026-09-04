@@ -36,13 +36,11 @@ jobs:
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           "$(go env GOPATH)/bin/actionlint"
-      - name: shellcheck the script and the actions' run blocks
-        run: |
-          shellcheck scripts/setup-release-tagging.sh
-          for a in release-preflight release-publish-crate release-tag release-review-summary; do
-            { echo '#!/usr/bin/env bash'; yq -r '.runs.steps[].run' "$a/action.yml"; } > "/tmp/$a.sh"
-            shellcheck -e SC2016,SC2086 "/tmp/$a.sh"
-          done
+      # Each composite's logic is a real .sh file (invoked via
+      # $GITHUB_ACTION_PATH), so shellcheck lints it directly - no extracting
+      # run: blocks out of YAML, and full file context with real line numbers.
+      - name: shellcheck
+        run: shellcheck scripts/setup-release-tagging.sh release-*/*.sh
       - uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
         with:
           inputs: .
