@@ -91,7 +91,7 @@ runs:
         # green.
         sha=$(git rev-parse HEAD)
         concl=$(gh api "repos/$REPO/actions/runs?head_sha=$sha&status=completed" \
-          --jq --arg w "$CI_WORKFLOW" '[.workflow_runs[] | select(.name == $w)] | sort_by(.created_at) | last | .conclusion // "none"')
+          | jq -r --arg w "$CI_WORKFLOW" '[.workflow_runs[] | select(.name == $w)] | sort_by(.created_at) | last | .conclusion // "none"')
         [ "$concl" = "success" ] || soft "newest $CI_WORKFLOW run for $sha is '$concl', not success"
 
         echo "::notice::preflight passed for $VERSION at $sha"
