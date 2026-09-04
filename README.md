@@ -1,5 +1,8 @@
 # gh-actions
 
+[![github](https://img.shields.io/badge/github-northbymidwest%2Fgh--actions-blue?logo=github)](https://github.com/northbymidwest/gh-actions)
+[![CI](https://github.com/northbymidwest/gh-actions/actions/workflows/ci.yml/badge.svg)](https://github.com/northbymidwest/gh-actions/actions/workflows/ci.yml)
+
 Reusable pieces of the release workflow shared by the northbymidwest
 repositories, so the recipe lives in one place and every consumer pins it
 by commit SHA like any other action.
