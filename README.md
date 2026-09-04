@@ -7,7 +7,7 @@ by commit SHA like any other action.
 | path | what it is |
 | --- | --- |
 | `release-preflight/` | Composite action: the checks a release must pass before anything irreversible happens, and the crates.io probe that drives resume. |
-| `release-publish/` | Composite action: exchange an OIDC token and `cargo publish` each package, skipping any already live. |
+| `release-publish-crate/` | Composite action: exchange an OIDC token and `cargo publish` each package, skipping any already live. |
 | `release-tag/` | Composite action: push the protected `v<version>` tag with a deploy key and cut the GitHub release from the changelog. |
 | `release-review-summary/` | Composite action: write the table a release approver reads (version, commit, CI, tag, crates.io, notes) to the job summary. |
 | `scripts/setup-release-tagging.sh` | Idempotent provisioning of what `release-tag` needs on a repository: the `release` environment, the tag ruleset, and the deploy key plus its secret. |
@@ -22,7 +22,7 @@ is an output of a succeeded release, never its trigger: a protected `v*` tag
 is permanent the moment it lands, so a tag-triggered release would burn a
 version on any downstream failure.
 
-`cargo publish` runs in the consumer's own workflow (via `release-publish`, a
+`cargo publish` runs in the consumer's own workflow (via `release-publish-crate`, a
 composite, not a reusable workflow) so the trusted-publishing OIDC identity
 stays the consumer's release workflow, which is what each crate's
 trusted-publisher entry is bound to.
@@ -84,7 +84,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@<sha> # stable
         with:
           toolchain: stable
-      - uses: northbymidwest/gh-actions/release-publish@<sha> # vN
+      - uses: northbymidwest/gh-actions/release-publish-crate@<sha> # vN
         with:
           packages: my-crate
           publish: ${{ needs.preflight.outputs.publish }}
@@ -100,15 +100,15 @@ jobs:
 ### Multiple crates, other runners, cross-repo dependencies
 
 - **Lockstep crates:** list every manifest in `crates` (one path per line) and
-  every crate in `packages` and `release-publish`'s `packages`, in publish
+  every crate in `packages` and `release-publish-crate`'s `packages`, in publish
   order. `release-preflight` reports which still need uploading (resume), and
-  `release-publish` skips the rest.
+  `release-publish-crate` skips the rest.
 - **A crate that links a private framework:** run `publish` on `macos-latest`
-  and pass `args: --no-default-features` to `release-publish` if the default
+  and pass `args: --no-default-features` to `release-publish-crate` if the default
   features raise the toolchain floor past the runner.
 - **A path dependency on another repo:** check that repo out as a sibling in
   the `publish` job (the same `path:` layout CI uses) and pass
-  `release-publish` / `release-tag` a `working-directory` pointing at your
+  `release-publish-crate` / `release-tag` a `working-directory` pointing at your
   repo's checkout, since composite steps do not inherit
   `defaults.run.working-directory`.
 - **A registry dependency that must ship first:** pass
@@ -120,7 +120,7 @@ jobs:
 
 `release-preflight` outputs `tag` (`free` or `exists`), `publish` (a JSON
 array of the packages still needing upload), and `registry` (a one-line
-summary). Feed `publish` to `release-publish`, and `tag`/`registry` to
+summary). Feed `publish` to `release-publish-crate`, and `tag`/`registry` to
 `release-review-summary`.
 
 ## Provisioning a repository
@@ -141,7 +141,7 @@ destroyed after upload, so no copy exists outside GitHub.
 ## Pinning
 
 Consumers pin `northbymidwest/gh-actions/<action>@<full sha>` with a
-trailing `# <tag>` comment, e.g. `# v0.2.0`; Dependabot's `github-actions`
+trailing `# <tag>` comment, e.g. `# v0.2.1`; Dependabot's `github-actions`
 ecosystem matches the comment against this repository's tags and moves the
 pin like any other action, which is why every release here is tagged.
 

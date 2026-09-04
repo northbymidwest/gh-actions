@@ -91,7 +91,7 @@ runs:
             echo "| CI | (no run found) |"
           fi
           [ -n "$TAG" ] && echo "| tag | \`v$VERSION\`: $TAG |"
-          [ -n "$REGISTRY" ] && echo "| crates.io | $REGISTRY |"
+          [ -n "$REGISTRY" ] && echo "| registry | $REGISTRY |"
           # Extra rows: 'label|value' per line.
           printf '%s\n' "$EXTRA" | while IFS='|' read -r label value; do
             [ -n "$label" ] || continue

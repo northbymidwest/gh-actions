@@ -65,10 +65,10 @@ outputs:
     description: >-
       JSON array of the packages that still need uploading (all of them for a
       fresh release, the not-yet-live suffix for a resumed one, [] when there is
-      nothing to publish). Feed to release-publish's 'publish' input.
+      nothing to publish). Feed to release-publish-crate's 'publish' input.
     value: ${{ steps.check.outputs.publish }}
   registry:
-    description: A one-line human summary of the crates.io state, for the review.
+    description: A one-line human summary of the registry state, for the review.
     value: ${{ steps.check.outputs.registry }}
 runs:
   using: composite
@@ -151,7 +151,7 @@ runs:
           if live "$crate" "$req"; then
             echo "::notice::prerequisite $crate $req is live on crates.io"
           else
-            soft "$crate $req is not on crates.io; release it from its own repo first"
+            soft "$crate $req is not published; release it from its own repo first"
           fi
         done
 
@@ -170,7 +170,7 @@ runs:
         # resumes at the first not-live package. Any live package after a
         # not-live one is a state no release can produce, and stays fatal.
         publish_json="[]"
-        registry="nothing to publish"
+        registry=""
         if [ -n "${PACKAGES//[[:space:]]/}" ]; then
           to_publish=""; any_live=false; all_live=true; prev_live=true; broke=false
           for c in $PACKAGES; do
@@ -186,13 +186,13 @@ runs:
             soft "crates.io state for $VERSION is inconsistent (a published crate follows an unpublished one); no release produces this, check by hand"
           fi
           if [ "$all_live" = true ]; then
-            soft "every package already has $VERSION on crates.io"
+            soft "every package already has $VERSION published"
             registry="all already published"
           elif [ "$any_live" = true ]; then
             [ "$DRY" = true ] || echo "::notice::resuming a half-finished release; uploading only:$to_publish"
             registry="RESUME: uploading only$to_publish"
           else
-            registry="none published"
+            registry="not yet published; will publish:$to_publish"
           fi
         fi
         {
