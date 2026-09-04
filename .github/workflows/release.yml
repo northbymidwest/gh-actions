@@ -36,11 +36,20 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: ./release-preflight
+      - id: pre
+        uses: ./release-preflight
         with:
           version: ${{ inputs.version }}
           dry-run: ${{ inputs.dry_run }}
           crates: ""
+          token: ${{ github.token }}
+      - uses: ./release-review-summary
+        with:
+          version: ${{ inputs.version }}
+          dry-run: ${{ inputs.dry_run }}
+          tag: ${{ steps.pre.outputs.tag }}
+          registry: ${{ steps.pre.outputs.registry }}
+          what-approving-does: tags v${{ inputs.version }}
           token: ${{ github.token }}
 
   tag:
@@ -55,12 +64,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./release-tag
-        if: ${{ !inputs.dry_run }}
         with:
           version: ${{ inputs.version }}
           deploy-key: ${{ secrets.RELEASE_TAG_KEY }}
           token: ${{ github.token }}
-      - if: ${{ inputs.dry_run }}
-        env:
-          VERSION: ${{ inputs.version }}
-        run: echo "Dry run only. A real run would tag v$VERSION at this commit." >> "$GITHUB_STEP_SUMMARY"
+          dry-run: ${{ inputs.dry_run }}

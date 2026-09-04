@@ -1,0 +1,68 @@
+name: release publish
+description: >-
+  Exchange an OIDC identity for a short-lived crates.io token (trusted
+  publishing), then publish each listed package in order, skipping any that
+  release-preflight found already live. Runs in the consumer's own job so the
+  OIDC identity is the consumer's release workflow, which is what the crate's
+  trusted-publisher entry is bound to. The token exchange runs even on a dry
+  run - it is the one step with no offline test - and only the uploads are
+  withheld.
+inputs:
+  packages:
+    description: Newline-separated crate names, in publish order.
+    required: true
+  publish:
+    description: >-
+      JSON array of the packages to actually upload, from release-preflight's
+      'publish' output. A package not in it is skipped (already on crates.io).
+    required: true
+  args:
+    description: Extra flags passed to every 'cargo publish' (e.g. --no-default-features).
+    required: false
+    default: ""
+  dry-run:
+    description: When true, exchange the token but upload nothing.
+    required: false
+    default: "true"
+  working-directory:
+    description: >-
+      Directory to run 'cargo publish' in. Set it when the crate is checked out
+      in a subdirectory (a sibling-checkout layout for a path dependency);
+      composite steps do not inherit a job's defaults.run.working-directory.
+    required: false
+    default: "."
+  auth-action:
+    description: The pinned crates-io-auth-action reference to use.
+    required: false
+    default: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+runs:
+  using: composite
+  steps:
+    # Trusted publishing: a short-lived token from OIDC, so the repository holds
+    # no standing credential that could publish. Runs on a dry run too: the
+    # exchange is the part with no offline test, and getting a token publishes
+    # nothing.
+    - id: auth
+      uses: ${{ inputs.auth-action }}
+    - name: Publish
+      if: ${{ inputs.dry-run != 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        PACKAGES: ${{ inputs.packages }}
+        PUBLISH: ${{ inputs.publish }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -eu
+        set -f
+        for c in $PACKAGES; do
+          if printf '%s' "$PUBLISH" | jq -e --arg c "$c" 'index($c) != null' >/dev/null; then
+            echo "::notice::publishing $c"
+            # ARGS is intentionally word-split (e.g. --no-default-features).
+            # shellcheck disable=SC2086
+            cargo publish -p "$c" $ARGS
+          else
+            echo "::notice::skipping $c (already on crates.io)"
+          fi
+        done

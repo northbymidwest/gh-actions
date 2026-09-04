@@ -3,7 +3,9 @@ description: >-
   Push a protected v<version> tag with a write deploy key, the one bypass actor
   a "protect version tags" ruleset admits, then cut a GitHub release whose notes
   are the matching CHANGELOG.md section. Run this only after every irreversible
-  upload has succeeded: the tag is permanent the moment it lands.
+  upload has succeeded: the tag is permanent the moment it lands. On a dry run
+  it tags nothing and writes what a real run would do to the step summary, so a
+  consumer needs no separate dry-run branch.
 inputs:
   version:
     description: The version being released, without a leading v (e.g. 0.1.0).
@@ -16,6 +18,10 @@ inputs:
   token:
     description: A token with contents:write, for gh release create (github.token).
     required: true
+  dry-run:
+    description: When true, tag nothing; write a summary of what a real run would do.
+    required: false
+    default: "false"
   changelog:
     description: Path to the changelog whose "## <version>" section becomes the notes.
     required: false
@@ -24,11 +30,20 @@ inputs:
     description: Mark the GitHub release as a pre-release.
     required: false
     default: "true"
+  working-directory:
+    description: >-
+      Directory to run in (the checked-out repository). Set it when the repo is
+      in a subdirectory; composite steps do not inherit a job's
+      defaults.run.working-directory.
+    required: false
+    default: "."
 runs:
   using: composite
   steps:
     - name: Push the tag and create the release
+      if: ${{ inputs.dry-run != 'true' }}
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       env:
         VERSION: ${{ inputs.version }}
         RELEASE_TAG_KEY: ${{ inputs.deploy-key }}
@@ -55,3 +70,13 @@ runs:
         gh release create "v$VERSION" --title "v$VERSION" \
           --notes-file "$dir/notes.md" --verify-tag $flag
         echo "::notice::tagged v$VERSION at $sha and created the release"
+    - name: Dry run summary
+      if: ${{ inputs.dry-run == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -eu
+        echo "Dry run only. A real run would tag \`v$VERSION\` at $(git rev-parse HEAD), permanently, and cut the GitHub release from the CHANGELOG section." >> "$GITHUB_STEP_SUMMARY"
+        echo "::notice::dry run complete: nothing tagged"

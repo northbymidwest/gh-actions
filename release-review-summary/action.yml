@@ -1,0 +1,108 @@
+name: release review summary
+description: >-
+  Write the table a release approver reads to the job summary: version, commit,
+  the green CI run, the tag state, the crates.io state, any repo-specific rows,
+  and the release notes verbatim from the changelog. Run it in the preflight
+  job, after release-preflight, so the summary is on the run page the approval
+  links to. It states what approving will do; on a dry run it says so.
+inputs:
+  version:
+    description: The version to release, without a leading v.
+    required: true
+  dry-run:
+    description: Whether this is a rehearsal.
+    required: false
+    default: "true"
+  tag:
+    description: release-preflight's 'tag' output (free or exists).
+    required: false
+    default: ""
+  registry:
+    description: release-preflight's 'registry' output (the crates.io summary).
+    required: false
+    default: ""
+  what-approving-does:
+    description: >-
+      The one-line description of the irreversible actions, e.g.
+      "publishes gputrace-bundle and tags v<version>". Shown in the heading.
+    required: false
+    default: "tags this release"
+  extra-rows:
+    description: >-
+      Optional newline-separated 'label|value' pairs, appended to the table as
+      extra rows (e.g. a cross-repo prerequisite's state).
+    required: false
+    default: ""
+  changelog:
+    description: Path to the changelog whose "## <version>" section is the notes.
+    required: false
+    default: CHANGELOG.md
+  ci-workflow:
+    description: Name of the CI workflow to link its green run for this commit.
+    required: false
+    default: CI
+  token:
+    description: A token with actions:read, for the CI-run link (github.token).
+    required: true
+  working-directory:
+    description: Directory of the checked-out repository.
+    required: false
+    default: "."
+runs:
+  using: composite
+  steps:
+    - name: For review
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        VERSION: ${{ inputs.version }}
+        DRY: ${{ inputs.dry-run }}
+        TAG: ${{ inputs.tag }}
+        REGISTRY: ${{ inputs.registry }}
+        DOES: ${{ inputs.what-approving-does }}
+        EXTRA: ${{ inputs.extra-rows }}
+        CHANGELOG: ${{ inputs.changelog }}
+        CI_WORKFLOW: ${{ inputs.ci-workflow }}
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+        RUNS: ${{ github.server_url }}/${{ github.repository }}/actions/runs
+      run: |
+        set -eu
+        sha=$(git rev-parse HEAD)
+        subject=$(git log -1 --format=%s)
+        ci=$(gh api "repos/$REPO/actions/runs?head_sha=$sha&status=completed" \
+          | jq -r --arg w "$CI_WORKFLOW" '[.workflow_runs[] | select(.name == $w)] | sort_by(.created_at) | last | .id // empty')
+        awk -v v="$VERSION" 'index($0, "## " v " ") == 1 {f=1; next} /^## / {f=0} f' \
+          "$CHANGELOG" > /tmp/review-notes.md
+        {
+          if [ "$DRY" = true ]; then
+            echo "## Dry run: \`$VERSION\` (nothing will be published or tagged)"
+          else
+            echo "## Release \`$VERSION\`: approving $DOES"
+          fi
+          echo
+          echo "| | |"
+          echo "|---|---|"
+          echo "| version | \`$VERSION\` |"
+          echo "| commit | \`$sha\` $subject |"
+          if [ -n "$ci" ]; then
+            echo "| CI | [green on this commit]($RUNS/$ci) |"
+          else
+            echo "| CI | (no run found) |"
+          fi
+          [ -n "$TAG" ] && echo "| tag | \`v$VERSION\`: $TAG |"
+          [ -n "$REGISTRY" ] && echo "| crates.io | $REGISTRY |"
+          # Extra rows: 'label|value' per line.
+          printf '%s\n' "$EXTRA" | while IFS='|' read -r label value; do
+            [ -n "$label" ] || continue
+            echo "| $label | $value |"
+          done
+          if [ "$DRY" = true ]; then
+            echo
+            echo "A taken tag or a published version is reported, not fatal, on a dry run; a real run stops at either."
+          fi
+          echo
+          echo "### Release notes, verbatim from \`$CHANGELOG\`"
+          echo
+          cat /tmp/review-notes.md
+        } >> "$GITHUB_STEP_SUMMARY"

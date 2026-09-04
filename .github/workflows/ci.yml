@@ -38,7 +38,7 @@ jobs:
       - name: shellcheck the script and the actions' run blocks
         run: |
           shellcheck scripts/setup-release-tagging.sh
-          for a in release-preflight release-tag; do
+          for a in release-preflight release-publish release-tag release-review-summary; do
             { echo '#!/usr/bin/env bash'; yq -r '.runs.steps[].run' "$a/action.yml"; } > "/tmp/$a.sh"
             shellcheck -e SC2016,SC2086 "/tmp/$a.sh"
           done
