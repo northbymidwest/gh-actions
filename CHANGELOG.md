@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 - 2026-09-11
+
+### Changed
+
+- `release-preflight` now waits for the CI run on the release commit to finish
+  instead of failing when it is still queued, in progress, or not yet
+  scheduled. A release dispatched right after the version bump used to race
+  its own CI run and report `'none'`. It polls every `ci-poll-seconds` (30)
+  for up to `ci-wait-minutes` (30); `0` restores the old check-once behaviour.
+  The preflight job's `timeout-minutes` must exceed the wait, so consumers
+  that keep the default should raise it above 30 when re-pinning.
+
 ## 0.2.2 - 2026-09-04
 
 ### Changed

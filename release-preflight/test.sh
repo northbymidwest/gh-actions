@@ -82,5 +82,17 @@ compute_publish 1.2.3 solo
 check "single-live json" "[]" "${PUBLISH_JSON}"
 check "single-live registry" "all already published" "${REGISTRY}"
 
+# --- ci_verdict: only a completed, successful run is green ---
+r=$(ci_verdict completed success)
+check "ci green" green "${r}"
+for c in failure cancelled skipped timed_out neutral none; do
+  r=$(ci_verdict completed "${c}")
+  check "ci bad: ${c}" bad "${r}"
+done
+for st in none queued in_progress waiting pending requested; do
+  r=$(ci_verdict "${st}" none)
+  check "ci wait: ${st}" wait "${r}"
+done
+
 printf '\n%d passed, %d failed\n' "${pass}" "${fail}"
 [ "${fail}" -eq 0 ]

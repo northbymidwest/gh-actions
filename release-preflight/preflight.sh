@@ -117,14 +117,41 @@ awk -v v="${VERSION}" 'index($0, "## " v " ") == 1 { f = 1; next } /^## / { f = 
   "${CHANGELOG}" >/tmp/preflight-notes.md
 grep -q '[^[:space:]]' /tmp/preflight-notes.md || fail "${CHANGELOG} has no ## ${VERSION} section"
 
-# The newest completed run of the CI workflow for this commit must be green.
-# Queried rather than re-run. gh runs on its own line so its failure is caught
-# by set -e rather than masked by the jq that consumes it.
+# The newest run of the CI workflow for this commit must be green. Queried
+# rather than re-run. A release is usually dispatched right after the version
+# bump lands, so that run is often still queued or in progress, or not even
+# scheduled yet: poll until it completes (up to CI_WAIT_MINUTES, every
+# CI_POLL_SECONDS) instead of failing on the race. A workflow that never runs
+# for this commit (for example, skipped by a paths filter) waits out the whole
+# window and then fails; set ci-wait-minutes to 0 to check once and not wait.
+# gh runs on its own line so its failure is caught by set -e rather than masked
+# by the jq that consumes it.
+for n in "${CI_WAIT_MINUTES}" "${CI_POLL_SECONDS}"; do
+  case "${n}" in
+    '' | *[!0-9]*) fail "ci-wait-minutes and ci-poll-seconds must be whole numbers (got '${CI_WAIT_MINUTES}' and '${CI_POLL_SECONDS}')" ;;
+    *) ;;
+  esac
+done
+[ "${CI_POLL_SECONDS}" -gt 0 ] || fail "ci-poll-seconds must be at least 1"
 sha=$(git rev-parse HEAD)
-runs_json=$(gh api "repos/${REPO}/actions/runs?head_sha=${sha}&status=completed")
-concl=$(jq -r --arg w "${CI_WORKFLOW}" \
-  '[.workflow_runs[] | select(.name == $w)] | sort_by(.created_at) | last | .conclusion // "none"' \
-  <<<"${runs_json}")
-[ "${concl}" = "success" ] || soft "newest ${CI_WORKFLOW} run for ${sha} is '${concl}', not success"
+deadline=$(($(date +%s) + CI_WAIT_MINUTES * 60))
+while :; do
+  runs_json=$(gh api "repos/${REPO}/actions/runs?head_sha=${sha}")
+  state=$(jq -r --arg w "${CI_WORKFLOW}" \
+    '[.workflow_runs[] | select(.name == $w)] | sort_by(.created_at) | last | "\(.status // "none") \(.conclusion // "none")"' \
+    <<<"${runs_json}")
+  status=${state%% *}
+  concl=${state#* }
+  verdict=$(ci_verdict "${status}" "${concl}")
+  now=$(date +%s)
+  if [ "${verdict}" != wait ] || [ "${now}" -ge "${deadline}" ]; then break; fi
+  echo "${CI_WORKFLOW} run for ${sha} is '${status}'; checking again in ${CI_POLL_SECONDS}s"
+  sleep "${CI_POLL_SECONDS}"
+done
+case "${verdict}" in
+  green) echo "::notice::${CI_WORKFLOW} run for ${sha} is green" ;;
+  wait) soft "no completed ${CI_WORKFLOW} run for ${sha} after waiting ${CI_WAIT_MINUTES} minutes (last seen: '${status}')" ;;
+  *) soft "newest ${CI_WORKFLOW} run for ${sha} is '${concl}', not success" ;;
+esac
 
 echo "::notice::preflight passed for ${VERSION} at ${sha} (${REGISTRY})"

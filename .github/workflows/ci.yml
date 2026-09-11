@@ -80,6 +80,8 @@ jobs:
           version: "0.1.0"
           dry-run: "true"
           crates: ""
+          # This step runs inside the very CI run it would wait on.
+          ci-wait-minutes: "0"
           token: ${{ github.token }}
       - env:
           TAG_STATE: ${{ steps.preflight.outputs.tag }}

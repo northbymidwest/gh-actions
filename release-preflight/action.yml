@@ -5,8 +5,9 @@ description: >-
   publish = false, any exact-version pins hold, the v<version> tag does not
   already exist (a protected tag cannot be moved), the changelog has a non-empty
   section for it, cross-repo prerequisites are already on crates.io, and the
-  newest completed CI run for this commit is green. It also probes crates.io for
-  each package being released and reports which still need uploading, so a
+  newest CI run for this commit is green, waiting for it to finish first if it
+  is still queued, in progress, or not yet scheduled. It also probes crates.io
+  for each package being released and reports which still need uploading, so a
   release that died between two uploads resumes rather than burning a version.
   In dry-run mode the checks that a rehearsal is allowed to fail (publish =
   false, CI, an existing tag, an already-published version) warn instead of
@@ -51,9 +52,20 @@ inputs:
     required: false
     default: CHANGELOG.md
   ci-workflow:
-    description: Name of the workflow whose newest completed run must be green.
+    description: Name of the workflow whose newest run for this commit must be green.
     required: false
     default: CI
+  ci-wait-minutes:
+    description: >-
+      How long to wait for that run to complete when it is still queued, in
+      progress, or not yet scheduled, before giving up. The preflight job's
+      timeout-minutes must exceed this. 0 checks once and does not wait.
+    required: false
+    default: "30"
+  ci-poll-seconds:
+    description: How often to re-query the run while waiting.
+    required: false
+    default: "30"
   token:
     description: A token with actions:read, for the CI query (github.token).
     required: true
@@ -85,6 +97,8 @@ runs:
         PINS: ${{ inputs.pins }}
         CHANGELOG: ${{ inputs.changelog }}
         CI_WORKFLOW: ${{ inputs.ci-workflow }}
+        CI_WAIT_MINUTES: ${{ inputs.ci-wait-minutes }}
+        CI_POLL_SECONDS: ${{ inputs.ci-poll-seconds }}
         GH_TOKEN: ${{ inputs.token }}
         REPO: ${{ github.repository }}
       run: bash "$GITHUB_ACTION_PATH/preflight.sh"

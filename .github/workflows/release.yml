@@ -28,7 +28,8 @@ concurrency:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Must exceed release-preflight's ci-wait-minutes (30).
+    timeout-minutes: 40
     permissions:
       contents: read
       actions: read

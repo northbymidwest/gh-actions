@@ -74,3 +74,19 @@ compute_publish() {
     REGISTRY="not yet published; will publish:${TO_PUBLISH}"
   fi
 }
+
+# Classify the newest run of the CI workflow for the release commit. Arguments:
+# the run's status ("none" when there is no run at all yet) and its conclusion.
+# Prints one word:
+#   green  the run completed with conclusion success
+#   wait   there is no run yet, or it has not completed (queued, in_progress,
+#          waiting, pending, requested): the caller polls again
+#   bad    the run completed with any other conclusion
+ci_verdict() {
+  case "$1" in
+    completed)
+      if [ "$2" = success ]; then echo green; else echo bad; fi
+      ;;
+    *) echo wait ;;
+  esac
+}
