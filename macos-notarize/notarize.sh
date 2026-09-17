@@ -48,6 +48,13 @@ if ! xcrun notarytool history "${auth[@]}" >/dev/null 2>&1; then
 fi
 
 if [ "${DRY_RUN}" = "true" ]; then
+  # Still emit a checksum, so a consumer reading this output does not get an
+  # empty string on a rehearsal. It is the unstapled file's, which is what a
+  # dry run produces. Computed on its own line so a failure stops the script
+  # rather than being masked inside the printf.
+  digest=$(shasum -a 256 "${ARTIFACT}")
+  digest=${digest%% *}
+  printf 'sha256=%s\n' "${digest}" >>"${GITHUB_OUTPUT}"
   echo "::notice::dry run: ${ARTIFACT} is signed and the credentials work; not submitting"
   exit 0
 fi
@@ -85,4 +92,9 @@ case "${ARTIFACT}" in
   *.dmg) spctl -a -vv -t open --context context:primary-signature "${ARTIFACT}" ;;
   *) spctl -a -vv -t exec "${ARTIFACT}" ;;
 esac
-echo "::notice::notarized and stapled ${ARTIFACT}"
+# After stapling, not before: the staple writes the ticket into the file, so
+# a checksum taken any earlier describes a file nobody will ever download.
+digest=$(shasum -a 256 "${ARTIFACT}")
+digest=${digest%% *}
+printf 'sha256=%s\n' "${digest}" >>"${GITHUB_OUTPUT}"
+echo "::notice::notarized and stapled ${ARTIFACT} (${digest})"

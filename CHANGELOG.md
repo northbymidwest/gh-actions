@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.2 - 2026-09-17
+
+### Added
+
+- `macos-notarize` outputs `sha256`, the artifact's checksum after stapling.
+
+### Fixed
+
+- A consumer publishing `macos-dmg`'s `sha256` alongside a notarized image was
+  publishing the wrong number. Stapling writes the ticket into the file, so the
+  checksum taken when the image was built describes a file nobody ever
+  downloads. `macos-dmg`'s output now says so and points at the new one.
+
 ## 0.5.1 - 2026-09-17
 
 ### Changed

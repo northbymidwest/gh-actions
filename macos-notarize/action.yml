@@ -51,10 +51,18 @@ inputs:
       defaults.run.working-directory.
     required: false
     default: "."
+outputs:
+  sha256:
+    description: >-
+      The artifact's SHA-256 after stapling, as the hex digest alone. Stapling
+      writes the ticket into the file, so a checksum taken before this action
+      runs describes a file nobody will ever download. Publish this one.
+    value: ${{ steps.notarize.outputs.sha256 }}
 runs:
   using: composite
   steps:
-    - shell: bash
+    - id: notarize
+      shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
         ARTIFACT: ${{ inputs.path }}

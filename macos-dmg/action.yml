@@ -50,7 +50,10 @@ outputs:
     description: The disk image that was written.
     value: ${{ steps.build.outputs.path }}
   sha256:
-    description: The image's SHA-256, as the hex digest alone.
+    description: >-
+      The image's SHA-256 at this point, as the hex digest alone. If the image
+      is notarized afterwards, use macos-notarize's sha256 instead: stapling
+      writes the ticket into the file and changes this value.
     value: ${{ steps.build.outputs.sha256 }}
 runs:
   using: composite
