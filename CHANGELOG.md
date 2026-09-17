@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 - 2026-09-17
+
+### Changed
+
+- `macos-notarize` documents that submitting a disk image covers the application
+  inside it, so a separate submission of the application is not needed. The
+  previous wording recommended notarizing both, which costs a round trip per
+  release for a ticket on the copy inside the image, and that copy cannot be
+  stapled anyway without rebuilding the image and invalidating its own ticket.
+  Verified by submitting an image built from an application that had never been
+  notarized, then stapling the loose application successfully.
+
 ## 0.5.0 - 2026-09-17
 
 ### Added

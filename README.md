@@ -31,10 +31,13 @@ certificate, and gets an unsigned image and a warning rather than a failure. A
 release imports the certificate, builds, notarizes the application, packages it,
 signs the image, and notarizes that too.
 
-Both the application and the image are notarized, which is one more round trip
-than the minimum. Notarizing only the image leaves the application inside it
-unstapled, so once a user drags it out it verifies only while they can reach
-Apple. Stapling both is what makes each artifact work on its own, offline.
+One submission is enough. The notary service scans inside the image, so the
+ticket covers the application as well: a loose copy can be stapled afterwards
+without ever having been submitted on its own. The application inside the
+shipped image stays unstapled, which costs an offline first launch after
+somebody drags it out and nothing else, since Gatekeeper assesses it against
+Apple's records otherwise. Stapling that copy too is not possible without
+rebuilding the image, and a rebuilt image no longer matches its own ticket.
 
 Composite actions cannot register a post step, which is why
 `macos-signing-keychain` takes a `remove` input rather than cleaning up after

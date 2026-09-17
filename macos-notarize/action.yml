@@ -8,6 +8,11 @@ description: >-
   Stapling is what makes the artifact verify with no network. Without it the
   notarization still counts, but only on a machine that can reach Apple at the
   moment the user opens it.
+  Submitting a disk image covers the application inside it, so a separate
+  submission of the application is not needed: a loose copy can be stapled from
+  the image's own ticket. The copy inside the image stays unstapled, because
+  stapling it would mean rebuilding the image and a rebuilt image no longer
+  matches the ticket it was issued.
 inputs:
   path:
     description: The .app, .dmg or .zip to notarize.
