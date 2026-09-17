@@ -1,0 +1,54 @@
+name: macos dmg
+description: >-
+  Build a distributable disk image from a signed .app: the application, a
+  symlink to /Applications to drag it to, and nothing else. Signs the image
+  itself when given an identity, which matters because a disk image is code
+  as far as Gatekeeper is concerned and an unsigned one cannot be notarized.
+  Emits the path and the SHA-256, so a release can publish the checksum it
+  actually produced rather than one computed somewhere else.
+inputs:
+  app:
+    description: Path to the .app to package.
+    required: true
+  output:
+    description: Path of the .dmg to write. Overwritten if it exists.
+    required: true
+  volume-name:
+    description: >-
+      The name the mounted volume shows in Finder, and the window title while
+      the user is dragging. Defaults to the .app's own name.
+    required: false
+    default: ""
+  identity:
+    description: >-
+      Signing identity for the image, e.g. the identity output of
+      macos-signing-keychain. Leave empty to build an unsigned image, which is
+      useful for a pull request that has no certificate but cannot be
+      notarized or distributed.
+    required: false
+    default: ""
+  working-directory:
+    description: >-
+      Directory to run in. Composite steps do not inherit a job's
+      defaults.run.working-directory.
+    required: false
+    default: "."
+outputs:
+  path:
+    description: The disk image that was written.
+    value: ${{ steps.build.outputs.path }}
+  sha256:
+    description: The image's SHA-256, as the hex digest alone.
+    value: ${{ steps.build.outputs.sha256 }}
+runs:
+  using: composite
+  steps:
+    - id: build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        APP: ${{ inputs.app }}
+        OUTPUT: ${{ inputs.output }}
+        VOLUME_NAME: ${{ inputs.volume-name }}
+        IDENTITY: ${{ inputs.identity }}
+      run: bash "${GITHUB_ACTION_PATH}/dmg.sh"

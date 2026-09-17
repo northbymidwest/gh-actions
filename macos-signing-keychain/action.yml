@@ -1,0 +1,58 @@
+name: macos signing keychain
+description: >-
+  Import a Developer ID certificate into a throwaway keychain so codesign can
+  use it without a UI prompt, and remove that keychain again when the job is
+  done. Two modes because a composite action cannot register a post step: call
+  it once to import, and once more with remove set, from a step with if:
+  always(). Leaving a private key in a keychain on a runner is the one failure
+  here whose consequences outlast the job.
+inputs:
+  certificate:
+    description: >-
+      The Developer ID certificate as a base64 encoded .p12. Keep it as an
+      environment secret on the job that runs this action. Not required when
+      removing.
+    required: false
+    default: ""
+  password:
+    description: The password the .p12 was exported with. Not required when removing.
+    required: false
+    default: ""
+  keychain-path:
+    description: >-
+      Where to create the keychain. The default is under RUNNER_TEMP, which is
+      wiped with the runner; pass the same value to the import and the remove.
+    required: false
+    default: ""
+  remove:
+    description: >-
+      Delete the keychain instead of creating one. Safe to run when the import
+      never happened, so it can sit behind if: always() unconditionally.
+    required: false
+    default: "false"
+outputs:
+  keychain-path:
+    description: The keychain that was created, to pass back in when removing.
+    value: ${{ steps.import.outputs.keychain-path }}
+  identity:
+    description: >-
+      The full name of the Developer ID Application identity that was imported,
+      e.g. "Developer ID Application: Name (TEAMID1234)". Feed this to a build
+      that takes a signing identity, so the workflow never hardcodes it.
+    value: ${{ steps.import.outputs.identity }}
+runs:
+  using: composite
+  steps:
+    - id: import
+      if: ${{ inputs.remove != 'true' }}
+      shell: bash
+      env:
+        CERTIFICATE: ${{ inputs.certificate }}
+        CERT_PASSWORD: ${{ inputs.password }}
+        KEYCHAIN_PATH: ${{ inputs.keychain-path }}
+      run: bash "${GITHUB_ACTION_PATH}/import.sh"
+    - if: ${{ inputs.remove == 'true' }}
+      shell: bash
+      env:
+        KEYCHAIN_PATH: ${{ inputs.keychain-path }}
+      run: bash "${GITHUB_ACTION_PATH}/remove.sh"

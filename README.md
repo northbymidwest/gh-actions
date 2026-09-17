@@ -13,7 +13,33 @@ by commit SHA like any other action.
 | `release-publish-crate/` | Composite action: exchange an OIDC token and `cargo publish` each package, skipping any already live. |
 | `release-tag/` | Composite action: push the protected `v<version>` tag with a deploy key and cut the GitHub release from the changelog. |
 | `release-review-summary/` | Composite action: write the table a release approver reads (version, commit, CI, tag, crates.io, notes) to the job summary. |
+| `macos-signing-keychain/` | Composite action: import a Developer ID certificate into a throwaway keychain, and remove it again from an `if: always()` step. |
+| `macos-dmg/` | Composite action: build a signed disk image from a `.app`, with the drop target, and emit its path and SHA-256. |
+| `macos-notarize/` | Composite action: submit to Apple's notary service, wait, staple the ticket, and verify the way Gatekeeper will. |
 | `scripts/setup-release-tagging.sh` | Idempotent provisioning of what `release-tag` needs on a repository: the `release` environment, the tag ruleset, and the deploy key plus its secret. |
+
+## The macOS release shape
+
+A signed, notarized application is a different deliverable from a crate, and
+needs three things a registry release does not: a certificate that has to reach
+a runner without lingering on it, a disk image to hand to a person, and a
+round trip through Apple that takes minutes and can reject the artifact.
+
+The three `macos-*` actions above are those steps, split where a consumer might
+reasonably want only one of them. A pull request can build and package with no
+certificate, and gets an unsigned image and a warning rather than a failure. A
+release imports the certificate, builds, notarizes the application, packages it,
+signs the image, and notarizes that too.
+
+Both the application and the image are notarized, which is one more round trip
+than the minimum. Notarizing only the image leaves the application inside it
+unstapled, so once a user drags it out it verifies only while they can reach
+Apple. Stapling both is what makes each artifact work on its own, offline.
+
+Composite actions cannot register a post step, which is why
+`macos-signing-keychain` takes a `remove` input rather than cleaning up after
+itself. Call it a second time behind `if: always()`; it is quiet when there is
+nothing to remove, so it is safe on a job that failed before the import.
 
 ## The release shape these support
 

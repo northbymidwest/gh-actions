@@ -1,0 +1,61 @@
+name: macos notarize
+description: >-
+  Submit an artifact to Apple's notary service, wait for the verdict, staple
+  the ticket into it, and then verify it the way Gatekeeper will. Takes a .app,
+  a .dmg, or a .zip; a .app is zipped for submission because notarytool does
+  not accept a bundle directly, and the ticket is stapled to the bundle rather
+  than to the zip.
+  Stapling is what makes the artifact verify with no network. Without it the
+  notarization still counts, but only on a machine that can reach Apple at the
+  moment the user opens it.
+inputs:
+  path:
+    description: The .app, .dmg or .zip to notarize.
+    required: true
+  key:
+    description: >-
+      The contents of an App Store Connect API key (.p8), not a path. Preferred
+      over an Apple ID and app-specific password: a key belongs to the team
+      rather than a person and can be revoked on its own.
+    required: false
+    default: ""
+  key-id:
+    description: The API key's ID, the 10 characters in its filename.
+    required: false
+    default: ""
+  issuer:
+    description: The App Store Connect issuer UUID.
+    required: false
+    default: ""
+  keychain-profile:
+    description: >-
+      A notarytool keychain profile to use instead of an API key, for running
+      the same action on a developer's own machine.
+    required: false
+    default: ""
+  dry-run:
+    description: >-
+      Verify the artifact is signed and the credentials work, then stop without
+      submitting. Notarization is minutes long and leaves a record on the
+      account, so a dry run should not do it.
+    required: false
+    default: "false"
+  working-directory:
+    description: >-
+      Directory to run in. Composite steps do not inherit a job's
+      defaults.run.working-directory.
+    required: false
+    default: "."
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        ARTIFACT: ${{ inputs.path }}
+        NOTARY_KEY_P8: ${{ inputs.key }}
+        NOTARY_KEY_ID: ${{ inputs.key-id }}
+        NOTARY_ISSUER_ID: ${{ inputs.issuer }}
+        NOTARY_PROFILE: ${{ inputs.keychain-profile }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: bash "${GITHUB_ACTION_PATH}/notarize.sh"

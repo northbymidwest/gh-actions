@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `macos-signing-keychain`, `macos-dmg` and `macos-notarize`: the three steps a
+  signed, notarized macOS application needs that a crate release does not. A
+  certificate has to reach a runner without lingering on it, a disk image is
+  what a person is handed, and the round trip through Apple takes minutes and
+  can reject the artifact.
+- The three are split where a consumer might want only one. A pull request can
+  build and package with no certificate, and gets an unsigned image with a
+  warning rather than a failure.
+- `macos-signing-keychain` takes a `remove` input rather than cleaning up after
+  itself, because a composite action cannot register a post step. Call it again
+  behind `if: always()`; it is quiet when there is nothing to remove.
+
 ## 0.3.0 - 2026-09-11
 
 ### Changed
