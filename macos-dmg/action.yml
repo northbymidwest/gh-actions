@@ -19,6 +19,18 @@ inputs:
       the user is dragging. Defaults to the .app's own name.
     required: false
     default: ""
+  ds-store:
+    description: >-
+      Path to a .DS_Store to place at the root of the image, which is what
+      positions the icons and sizes the window Finder opens. Committed under
+      another name in the consumer's repository, because .gitignore files
+      almost always exclude .DS_Store; this action renames it on the way in.
+      Generated once on a machine with a Finder, since arranging icons is
+      AppleScript against Finder and there is no Finder on a CI runner. Leave
+      empty for the default arrangement, which is alphabetical and puts
+      Applications before the application.
+    required: false
+    default: ""
   identity:
     description: >-
       Signing identity for the image, e.g. the identity output of
@@ -50,5 +62,6 @@ runs:
         APP: ${{ inputs.app }}
         OUTPUT: ${{ inputs.output }}
         VOLUME_NAME: ${{ inputs.volume-name }}
+        DS_STORE: ${{ inputs.ds-store }}
         IDENTITY: ${{ inputs.identity }}
       run: bash "${GITHUB_ACTION_PATH}/dmg.sh"

@@ -12,6 +12,11 @@
 - The three are split where a consumer might want only one. A pull request can
   build and package with no certificate, and gets an unsigned image with a
   warning rather than a failure.
+- `macos-dmg` takes a `ds-store` input, which positions the icons and sizes the
+  window Finder opens. Arranging a disk image is AppleScript against Finder and
+  a runner has no Finder, so the consumer generates the file once on a real Mac
+  and commits it. The action renames it into place, because a `.gitignore`
+  almost always excludes `.DS_Store`.
 - `macos-signing-keychain` takes a `remove` input rather than cleaning up after
   itself, because a composite action cannot register a post step. Call it again
   behind `if: always()`; it is quiet when there is nothing to remove.

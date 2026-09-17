@@ -19,6 +19,19 @@ trap 'rm -rf "${stage}"' EXIT
 cp -R "${APP}" "${stage}/"
 ln -s /Applications "${stage}/Applications"
 
+# The icon positions and window size live in a .DS_Store at the volume root.
+# Finder writes one when somebody arranges the window by hand or by
+# AppleScript, and neither is available on a runner, so the consumer generates
+# it once and commits it. Copied in under its real name here, since it is
+# almost certainly stored under another one to get past a .gitignore.
+if [ -n "${DS_STORE:-}" ]; then
+  [ -f "${DS_STORE}" ] || {
+    echo "no such .DS_Store: ${DS_STORE}" >&2
+    exit 1
+  }
+  cp "${DS_STORE}" "${stage}/.DS_Store"
+fi
+
 rm -f "${OUTPUT}"
 # UDZO is the compressed read-only format every macOS since forever mounts
 # without a third-party tool. -quiet because hdiutil's progress is noise in a
