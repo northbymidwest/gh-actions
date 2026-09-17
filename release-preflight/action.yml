@@ -3,8 +3,9 @@ description: >-
   The checks a release should pass before anything irreversible happens: the
   version is well formed, every listed Cargo.toml carries it and is no longer
   publish = false, any exact-version pins hold, the v<version> tag does not
-  already exist (a protected tag cannot be moved), the changelog has a non-empty
-  section for it, cross-repo prerequisites are already on crates.io, and the
+  already exist (a protected tag cannot be moved), any manifests listed carry
+  the version, no release exists for it when asked, the changelog has a
+  non-empty section for it, cross-repo prerequisites are already on crates.io, and the
   newest CI run for this commit is green, waiting for it to finish first if it
   is still queued, in progress, or not yet scheduled. It also probes crates.io
   for each package being released and reports which still need uploading, so a
@@ -40,6 +41,23 @@ inputs:
       live on crates.io (the cross-repo publish-first ordering). Empty for none.
     required: false
     default: ""
+  manifests:
+    description: >-
+      Whitespace-separated manifests whose version must equal the release
+      version. Unlike crates, this says nothing about publish = false, for a
+      repository that ships something other than a crate and whose manifests
+      stay unpublished on purpose.
+    required: false
+    default: ""
+  refuse-existing-release:
+    description: >-
+      Also refuse when a GitHub release already exists for this version. Off by
+      default, because a release that tags after publishing creates it later
+      anyway. Turn it on where releases are created as drafts for review: a
+      draft holds its tag name without creating the tag, so the tag check alone
+      would let a second run leave two drafts for one version.
+    required: false
+    default: "false"
   pins:
     description: >-
       Newline-separated 'manifest|dep|version' triples asserting <manifest>
@@ -95,6 +113,8 @@ runs:
         PACKAGES: ${{ inputs.packages }}
         PREREQS: ${{ inputs.registry-prereqs }}
         PINS: ${{ inputs.pins }}
+        MANIFESTS: ${{ inputs.manifests }}
+        REFUSE_EXISTING_RELEASE: ${{ inputs.refuse-existing-release }}
         CHANGELOG: ${{ inputs.changelog }}
         CI_WORKFLOW: ${{ inputs.ci-workflow }}
         CI_WAIT_MINUTES: ${{ inputs.ci-wait-minutes }}

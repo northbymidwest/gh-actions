@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.0 - 2026-09-17
+
+### Added
+
+- `release-preflight` takes `manifests`: files whose version must equal the
+  release version, saying nothing about publishing. `crates` already checked the
+  version, but welded to an assertion that `publish = false` has been removed,
+  which is right for something going to crates.io and exactly wrong for a
+  repository that ships an application and keeps its manifests unpublished. Such
+  a consumer had to write the version check itself.
+- `release-preflight` takes `refuse-existing-release`, off by default: also
+  refuse when a GitHub release already exists for the version. A draft release
+  holds its tag name without creating the tag, so the tag check alone lets a
+  second run leave two drafts for one version. Wanted by a consumer that creates
+  drafts for review.
+
 ## 0.4.0 - 2026-09-17
 
 ### Added

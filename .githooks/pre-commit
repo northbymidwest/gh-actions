@@ -31,8 +31,12 @@ done
 [ -n "${sh_files}" ] || exit 0
 
 if command -v shellcheck >/dev/null 2>&1; then
+  # -x so a staged script that sources an unstaged one (preflight.sh sources
+  # lib.sh) is followed rather than reported as SC1091. CI never hits this
+  # because it passes every script at once; the hook sees only what is staged,
+  # and without -x the two disagree about the same file.
   # shellcheck disable=SC2086 # word-split the collected file list
-  shellcheck ${sh_files}
+  shellcheck -x ${sh_files}
 else
   echo "pre-commit: shellcheck not found; skipping (CI enforces it)" >&2
 fi

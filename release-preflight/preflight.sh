@@ -49,6 +49,16 @@ for man in ${CRATES}; do
   fi
 done
 
+# Manifests whose version must match, with nothing said about publishing. For a
+# repository that ships something other than a crate, where publish = false is
+# the permanent and correct state rather than a bump somebody forgot.
+# shellcheck disable=SC2086 # deliberate word-splitting of the manifest list
+for man in ${MANIFESTS}; do
+  [ -f "${man}" ] || fail "${man} does not exist"
+  v=$(awk -F'"' '/^version = "[0-9.]*"$/ { print $2; exit }' "${man}")
+  [ "${v}" = "${VERSION}" ] || fail "${man} says version ${v}, expected ${VERSION}"
+done
+
 # Exact-version pins: a manifest that pins a sibling '=<version>' must actually
 # pin this version, so a lockstep bump cannot miss one.
 # shellcheck disable=SC2086 # deliberate word-splitting of the pins list
@@ -86,6 +96,15 @@ if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>
   echo "tag=exists" >>"${GITHUB_OUTPUT}"
 else
   echo "tag=free" >>"${GITHUB_OUTPUT}"
+fi
+
+# A draft release holds its tag name without creating the tag, so the check
+# above cannot see one. A consumer that creates drafts for review wants a
+# second run refused rather than a second draft for the same version.
+if [ "${REFUSE_EXISTING_RELEASE}" = "true" ]; then
+  if gh release view "v${VERSION}" >/dev/null 2>&1; then
+    soft "a release for v${VERSION} already exists, possibly as a draft; delete it to rebuild this version"
+  fi
 fi
 
 # crates.io state for the packages being released. None may already be live,
